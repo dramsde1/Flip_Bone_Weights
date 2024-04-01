@@ -1,5 +1,6 @@
 import bpy
 
+# a helper function, given a vertex and a mesh's vertices, it will find the symmetrical vertex across the x axis
 def find_opposite_vertex(mesh_data, vertex):
 
     opposite_x = -vertex.co.x  # negate X-coordinate to find opposite side
@@ -14,6 +15,7 @@ def find_opposite_vertex(mesh_data, vertex):
                                     
     return None 
 
+# helper function to find out if a given vertex is in a given vertex group
 def is_in_vertex_group(mesh_data, v, source_vertex_group):
     for g in mesh_data.vertices[v.index].groups:
         if g.group == source_vertex_group.index:
@@ -22,7 +24,7 @@ def is_in_vertex_group(mesh_data, v, source_vertex_group):
 
 def transfer_weights(source_bone_name, target_bone_name, armature_name, mesh_name):
 
-    # Switch to object mode
+    # Switch to object mode NOTE: need to figure out why I need to do this
     bpy.ops.object.mode_set(mode='OBJECT')
 
     # Get the source and target armatures
@@ -68,4 +70,4 @@ def transfer_weights(source_bone_name, target_bone_name, armature_name, mesh_nam
         print("Source or target bone not found.")
 
 # Replace 'Armature', 'SourceBone', and 'TargetBone' with your actual armature name and bone names
-transfer_weights('R_Thumb1_HJ_02', 'L_Thumb1_HJ_02', 'Root.001', "LOD_1_Group_0_Sub_6__esf007_Body.033")
+transfer_weights('R_Thumb2', 'L_Thumb2', 'Root.001', "LOD_1_Group_0_Sub_6__esf007_Body.033")
