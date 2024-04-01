@@ -16,6 +16,8 @@ def find_opposite_vertex(mesh_data, vertex):
     return None 
 
 # helper function to find out if a given vertex is in a given vertex group
+#misconceptions because all vertices will always be in all of the vertex groups, just need to check for weights
+#in short this is somewhat of a useless function
 def is_in_vertex_group(mesh_data, v, source_vertex_group):
     for g in mesh_data.vertices[v.index].groups:
         if g.group == source_vertex_group.index:
