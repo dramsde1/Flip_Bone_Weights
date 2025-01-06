@@ -1,12 +1,5 @@
 import bpy
 from mathutils.kdtree import KDTree
-import site
-import pip
-pip.main(['install', 'numpy', '--target', site.USER_SITE])
-import numpy as np
-import bmesh
-from mathutils import Vector
-from mathutils.bvhtree import BVHTree
 
 def find_opposite_vertex(kd_tree, vertex_coordinate, vertex_type):
     if vertex_type == "Tuple":
@@ -23,15 +16,35 @@ def find_opposite_vertex(kd_tree, vertex_coordinate, vertex_type):
     co, index, dist = kd_tree.find(location)
     return index
 
-def get_neighbors_in_radius(kd_tree, radius, vertex_index, target_coordinate, target_vertex_group):
-    neighbors = [item[1] for item in kd_tree.find_range(target_coordinate, radius) if item[1] != vertex_index and target_vertex_group.weight(item[1]) == 0.0]
-    return neighbors 
-
-
-def smoothen_vertex_group(neighbors, target_vertex_group, vertex_index):
-    new_weight = target_vertex_group.weight(vertex_index)
+def get_neighbors_in_radius(kd_tree, radius, vertex_index, target_coordinate, target_vertex_group, mesh_data):
+    neighbors = [item[1] for item in kd_tree.find_range(target_coordinate, radius) if item[1] != vertex_index]
+    zero_neighbors = []
+    avg_weight = 0
+    counter = 0
     for idx in neighbors:
-        target_vertex_group.add([idx], new_weight, 'REPLACE')
+        v = mesh_data.vertices[idx] 
+        if is_in_vertex_group(mesh_data, v, target_vertex_group):
+            weight = target_vertex_group.weight(idx)
+        else:
+            weight = 0.0
+            target_vertex_group.add([idx], weight, 'REPLACE')
+        
+        if weight == 0.0:
+            zero_neighbors.append(idx)
+        else:
+            avg_weight += target_vertex_group.weight(idx)
+            counter += 1
+    
+    avg_weight += target_vertex_group.weight(vertex_index)
+    counter += 1
+    avg_weight = avg_weight / counter
+
+    return zero_neighbors, avg_weight
+
+
+def smoothen_vertex_group(neighbors, avg_weight, target_vertex_group, vertex_index):
+    for idx in neighbors:
+        target_vertex_group.add([idx], avg_weight, 'REPLACE')
 
 
 def get_vg_verts(mesh_data, source_vertex_group):
@@ -86,8 +99,9 @@ def transfer_weights(source_vertex_group_name, target_vertex_group_name, mesh_na
             #target_vertices.append(opposite_vertex)
 
             #smoothen target vertex group
-            neighbors = get_neighbors_in_radius(kd_tree=kd_tree, radius=0.2, vertex_index=opposite_vertex_index, target_coordinate=opposite_vertex.co, target_vertex_group=target_vertex_group)
-            smoothen_vertex_group(neighbors=neighbors, target_vertex_group=target_vertex_group, vertex_index=opposite_vertex_index)
+            neighbors, avg_weight = get_neighbors_in_radius(kd_tree=kd_tree, radius=0.5, vertex_index=opposite_vertex_index, target_coordinate=opposite_vertex.co, target_vertex_group=target_vertex_group, mesh_data=mesh_data)
+            
+            smoothen_vertex_group(neighbors=neighbors, avg_weight=avg_weight, target_vertex_group=target_vertex_group, vertex_index=opposite_vertex_index)
 
     print(f"Vertex group weights transferred from {source_vertex_group_name} to {target_vertex_group_name}")
 
