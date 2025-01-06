@@ -1,11 +1,20 @@
 import bpy
 from mathutils.kdtree import KDTree
+import site
+import pip
+pip.main(['install', 'numpy', '--target', site.USER_SITE])
 import numpy as np
 
-def find_opposite_vertex(kd_tree, vertex_coordinate):
-    opposite_x = -vertex_coordinate.x  # negate X-coordinate to find opposite side
-    opposite_y = vertex_coordinate.y
-    opposite_z = vertex_coordinate.z
+def find_opposite_vertex(kd_tree, vertex_coordinate, vertex_type):
+    if vertex_type == "Tuple":
+        opposite_x = -vertex_coordinate[0]  # negate X-coordinate to find opposite side
+        opposite_y = vertex_coordinate[1]
+        opposite_z = vertex_coordinate[2]
+
+    elif vertex_type == "MeshVertex":
+        opposite_x = -vertex_coordinate.co.x  # negate X-coordinate to find opposite side
+        opposite_y = vertex_coordinate.co.y
+        opposite_z = vertex_coordinate.co.z
 
     location = (opposite_x, opposite_y, opposite_z)
     co, index, dist = kd_tree.find(location)
@@ -68,18 +77,17 @@ def is_in_vertex_group(mesh_data, v, source_vertex_group):
             return True
     return False
 
-def transfer_weights(source_vertex_group, target_vertex_group, mesh_name):
+def transfer_weights(source_vertex_group_name, target_vertex_group_name, mesh_name):
 
     # Switch to object mode NOTE: need to figure out why I need to do this
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    source_vertex_group = bpy.data.objects[mesh_name].vertex_groups.get(source_vertex_group)
-    target_vertex_group = bpy.data.objects[mesh_name].vertex_groups.get(target_vertex_group)
+    source_vertex_group = bpy.data.objects[mesh_name].vertex_groups.get(source_vertex_group_name)
+    target_vertex_group = bpy.data.objects[mesh_name].vertex_groups.get(target_vertex_group_name)
 
     mesh_data = bpy.data.objects[mesh_name].data
 
     vg_vertices = get_vg_verts(mesh_data, source_vertex_group)
-    subdivided, mesh_vertex_len = subdivide_vertex_group(vg_vertices, 2, len(mesh_data.vertices))
     #subdivided.append({"index":mesh_vertex_len, "vertex_coordinates":new_vertex})
     kd_tree = create_kdtree(mesh_data)
 
@@ -88,34 +96,31 @@ def transfer_weights(source_vertex_group, target_vertex_group, mesh_name):
         vertex = v["vertex"]
         weight = v["weight"] 
 
-        opposite_vertex_index = find_opposite_vertex(kd_tree, vertex)
+        opposite_vertex_index = find_opposite_vertex(kd_tree, vertex, vertex_type="MeshVertex")
         opposite_vertex = mesh_data.vertices[opposite_vertex_index]
         if opposite_vertex:
             target_vertex_group.add([opposite_vertex.index], weight, 'REPLACE')
 
-    #new vertices added!
-    for v in subdivided:
-        #make sure all subdivided has weights
-        #subdivided.append({"index":mesh_vertex_len, "vertex_coordinates":new_vertex, "weight": weight})
-        weight = v["weight"]
-        vertex_coordinate = v["vertex_coordinates"]
-        opposite_vertex_index = find_opposite_vertex(kd_tree, vertex_coordinate)
-        opposite_vertex = mesh_data.vertices[opposite_vertex_index]
-        if opposite_vertex:
-            target_vertex_group.add([opposite_vertex.index], weight, 'REPLACE')
+   # subdivided, mesh_vertex_len = subdivide_vertex_group(vg_vertices, 2, len(mesh_data.vertices))
+   # #new vertices added!
+   # for v in subdivided:
+   #     #make sure all subdivided has weights
+   #     #subdivided.append({"index":mesh_vertex_len, "vertex_coordinates":new_vertex, "weight": weight})
+   #     weight = v["weight"]
+   #     vertex_coordinate = v["vertex_coordinates"]
+   #     opposite_vertex_index = find_opposite_vertex(kd_tree, vertex_coordinate, vertex_type="Tuple")
+   #     opposite_vertex = mesh_data.vertices[opposite_vertex_index]
+   #     if opposite_vertex:
+   #         target_vertex_group.add([opposite_vertex.index], weight, 'REPLACE')
 
 
-    print(f"Vertex group weights transferred from {source_bone_name} to {target_bone_name}")
+    print(f"Vertex group weights transferred from {source_vertex_group_name} to {target_vertex_group_name}")
 
 
 
 
 mesh_name = "low_head"
-armature_name = "slickback_root"
-
-obj = bpy.data.objects.get(mesh_name)
-
-transfer_weights("L_Ear", "R_Ear", armature_name, mesh_name)
+transfer_weights("L_Ear", "R_Ear", mesh_name)
 
 #if obj and obj.type == 'MESH':
 #    vertex_groups = [vg.name for vg in obj.vertex_groups if vg.name.startswith("L_")]
